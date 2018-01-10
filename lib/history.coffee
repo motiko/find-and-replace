@@ -20,6 +20,10 @@ class History
   getAtIndex: (index) ->
     @items[index]
 
+  getFiltered: (filterBy, fromIndex) ->
+    @items.map((text, index) -> {originalIndex: index, text: text})
+          .filter((item) -> item.text.search(filterBy) > -1 and item.originalIndex <= fromIndex)
+
   add: (text) ->
     @items.push(text)
     @length = @items.length
@@ -38,6 +42,10 @@ class HistoryCycler
     @index = @history.length
     @history.onDidAddItem (text) =>
       @buffer.setText(text) if text isnt @buffer.getText()
+    @buffer.onDidChange () =>
+      if @buffer.getText() is ''
+        @scratch = ''
+        console.log(0)
 
   addEditorElement: (editorElement) ->
     atom.commands.add editorElement,
@@ -47,8 +55,19 @@ class HistoryCycler
   previous: ->
     if @history.length is 0 or (@atLastItem() and @buffer.getText() isnt @history.getLast())
       @scratch = @buffer.getText()
+    else if @index is @history.length
+      @scratch = @buffer.getText()
+      @index--
     else if @index > 0
       @index--
+
+    if @scratch and @scratch isnt ''
+      filtered = @history.getFiltered(@scratch, @index)
+      if filtered.length > 0
+        obj = filtered.pop()
+        @index = obj.originalIndex
+      else
+        @index++
 
     @buffer.setText @history.getAtIndex(@index) ? ''
 
